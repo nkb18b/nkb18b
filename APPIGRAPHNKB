@@ -1,0 +1,139 @@
+import React, { useState } from 'react';
+import { 
+  LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer 
+} from 'recharts';
+import { Button, Input, Select, Textarea } from '@/components/ui/';
+
+const GraphGenerator = () => {
+  const [data, setData] = useState([]);
+  const [chartType, setChartType] = useState('bar');
+  const [exportFormat, setExportFormat] = useState('svg');
+  const [dimensions, setDimensions] = useState({ width: 800, height: 400 });
+  const [selectedPoint, setSelectedPoint] = useState(null);
+
+  const parseData = (input) => {
+    const rows = input.trim().split('\n');
+    const headers = rows[0].split(',');
+    return rows.slice(1).map(row => {
+      const values = row.split(',');
+      let obj = {};
+      headers.forEach((header, index) => {
+        obj[header] = isNaN(values[index]) ? values[index] : Number(values[index]);
+      });
+      return obj;
+    });
+  };
+
+  const handleDataInput = (e) => {
+    const parsedData = parseData(e.target.value);
+    setData(parsedData);
+  };
+
+  const exportChart = () => {
+    const svg = document.querySelector('.recharts-wrapper svg');
+    if (svg) {
+      const svgData = new XMLSerializer().serializeToString(svg);
+      const svgBlob = new Blob([svgData], {type: 'image/svg+xml;charset=utf-8'});
+      const svgUrl = URL.createObjectURL(svgBlob);
+      const downloadLink = document.createElement('a');
+      downloadLink.href = svgUrl;
+      downloadLink.download = `chart.${exportFormat}`;
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+    }
+  };
+
+  const handlePointClick = (point) => {
+    setSelectedPoint(point);
+  };
+
+  const renderChart = () => {
+    const ChartComponent = chartType === 'bar' ? BarChart : LineChart;
+    const DataComponent = chartType === 'bar' ? Bar : Line;
+
+    return (
+      <ResponsiveContainer width={dimensions.width} height={dimensions.height}>
+        <ChartComponent data={data} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis dataKey={Object.keys(data[0])[0]} />
+          <YAxis />
+          <Tooltip />
+          <Legend />
+          {Object.keys(data[0]).slice(1).map((key, index) => (
+            <DataComponent 
+              key={index} 
+              type="monotone" 
+              dataKey={key} 
+              stroke={`#${Math.floor(Math.random()*16777215).toString(16)}`} 
+              fill={`#${Math.floor(Math.random()*16777215).toString(16)}`}
+              onClick={handlePointClick}
+            />
+          ))}
+        </ChartComponent>
+      </ResponsiveContainer>
+    );
+  };
+
+  return (
+    <div className="p-4">
+      <h1 className="text-2xl font-bold mb-4">Générateur de Graphiques</h1>
+      
+      <div className="mb-4">
+        <label className="block mb-2">Données (format CSV) :</label>
+        <Textarea 
+          className="w-full p-2 border rounded"
+          rows={5}
+          onChange={handleDataInput}
+          placeholder="x,y,z&#10;1,2,3&#10;2,4,6&#10;3,6,9"
+        />
+      </div>
+
+      <div className="mb-4">
+        <label className="block mb-2">Type de graphique :</label>
+        <Select value={chartType} onChange={(e) => setChartType(e.target.value)}>
+          <option value="bar">Barres</option>
+          <option value="line">Lignes</option>
+        </Select>
+      </div>
+
+      <div className="mb-4">
+        <label className="block mb-2">Format d'exportation :</label>
+        <Select value={exportFormat} onChange={(e) => setExportFormat(e.target.value)}>
+          <option value="svg">SVG</option>
+          <option value="pdf">PDF</option>
+        </Select>
+      </div>
+
+      <div className="mb-4">
+        <label className="block mb-2">Dimensions :</label>
+        <Input 
+          type="number" 
+          value={dimensions.width} 
+          onChange={(e) => setDimensions({...dimensions, width: Number(e.target.value)})}
+          placeholder="Largeur"
+          className="mr-2"
+        />
+        <Input 
+          type="number" 
+          value={dimensions.height} 
+          onChange={(e) => setDimensions({...dimensions, height: Number(e.target.value)})}
+          placeholder="Hauteur"
+        />
+      </div>
+
+      <Button onClick={exportChart} className="mb-4">Exporter le graphique</Button>
+
+      {data.length > 0 && renderChart()}
+
+      {selectedPoint && (
+        <div className="mt-4 p-4 border rounded">
+          <h2 className="text-xl font-bold mb-2">Détails du point sélectionné</h2>
+          <pre>{JSON.stringify(selectedPoint, null, 2)}</pre>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default GraphGenerator;
